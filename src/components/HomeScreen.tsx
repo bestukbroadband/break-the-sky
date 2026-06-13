@@ -75,13 +75,20 @@ export default function HomeScreen({ onStart, onOpenLogbook }: HomeScreenProps) 
   ];
 
   return (
-    <div id="home-screen" className="relative min-h-screen w-full flex flex-col justify-between text-slate-100 bg-linear-to-b from-slate-950 via-slate-900 to-indigo-950 overflow-y-auto px-4 py-8 sm:px-8">
+    <div 
+      id="home-screen" 
+      className="relative min-h-screen w-full flex flex-col justify-between text-slate-100 bg-linear-to-b from-slate-950 via-slate-900 to-indigo-950 overflow-y-auto px-4 py-8 sm:px-8"
+      style={{ 
+        WebkitOverflowScrolling: 'touch', 
+        paddingBottom: 'calc(2rem + env(safe-area-inset-bottom, 0px))' 
+      }}
+    >
       {/* Visual background lights */}
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_var(--tw-gradient-stops))] from-indigo-500/10 via-transparent to-transparent pointer-events-none" />
       <div className="absolute bottom-0 left-0 right-0 h-48 bg-[radial-gradient(circle_at_bottom,_var(--tw-gradient-stops))] from-sky-500/5 via-transparent to-transparent pointer-events-none" />
 
       {/* Animated Home screen background silhouettes - Part 6 */}
-      <div className="homeSky">
+      <div className="homeSky pointer-events-none select-none" style={{ pointerEvents: 'none' }}>
         {/* Jet Silhouette */}
         <div className="aircraftSilhouette silhouetteJet text-sky-450/40">
           <Plane className="w-16 h-16 rotate-90" />

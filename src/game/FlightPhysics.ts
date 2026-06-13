@@ -112,11 +112,15 @@ export class FlightPhysics {
 
     // 1. Throttle Input
     if (this.aircraft.hasEngine && this.activeFailure !== 'engine_flameout') {
-      if (keys.throttleUp) {
-        this.throttle = Math.min(100, this.throttle + dt * 40);
-      }
-      if (keys.throttleDown) {
-        this.throttle = Math.max(0, this.throttle - dt * 40);
+      if (typeof keys.throttleOverride === 'number') {
+        this.throttle = Math.max(0, Math.min(100, keys.throttleOverride));
+      } else {
+        if (keys.throttleUp) {
+          this.throttle = Math.min(100, this.throttle + dt * 40);
+        }
+        if (keys.throttleDown) {
+          this.throttle = Math.max(0, this.throttle - dt * 40);
+        }
       }
     } else {
       this.throttle = 0; // Forced off or glider
@@ -170,50 +174,70 @@ export class FlightPhysics {
     // Ground resistance blocks roll and pitch
     if (this.isGrounded) {
       this.rotation.z = 0; // No roll on ground
-      if (keys.pitchUp && this.speedKnot > this.aircraft.takeoffSpeed) {
+      
+      const hasPitchUp = (typeof keys.pitch === 'number' ? keys.pitch > 0.05 : keys.pitchUp);
+      if (hasPitchUp && this.speedKnot > this.aircraft.takeoffSpeed) {
         // Can pitch up to liftoff
-        this.rotation.x += pitchFactor * dt;
+        const pitchVal = typeof keys.pitch === 'number' ? keys.pitch : 1.0;
+        this.rotation.x += pitchVal * pitchFactor * dt;
       } else {
         this.rotation.x = 0; // level nose on runway
       }
       
       // Yaw/steer on taxiway
-      if (keys.yawLeft) {
-        this.rotation.y += yawFactor * dt * (this.speedKnot / 20);
-      }
-      if (keys.yawRight) {
-        this.rotation.y -= yawFactor * dt * (this.speedKnot / 20);
+      if (typeof keys.yaw === 'number') {
+        this.rotation.y += keys.yaw * yawFactor * dt * (this.speedKnot / 20);
+      } else {
+        if (keys.yawLeft) {
+          this.rotation.y += yawFactor * dt * (this.speedKnot / 20);
+        }
+        if (keys.yawRight) {
+          this.rotation.y -= yawFactor * dt * (this.speedKnot / 20);
+        }
       }
     } else {
       // In-flight rotations
       // Pitch (nose up / down)
-      if (keys.pitchUp) {
-        this.rotation.x += pitchFactor * dt;
-      }
-      if (keys.pitchDown) {
-        this.rotation.x -= pitchFactor * dt;
+      if (typeof keys.pitch === 'number') {
+        this.rotation.x += keys.pitch * pitchFactor * dt;
+      } else {
+        if (keys.pitchUp) {
+          this.rotation.x += pitchFactor * dt;
+        }
+        if (keys.pitchDown) {
+          this.rotation.x -= pitchFactor * dt;
+        }
       }
       
       // Roll (bank wings left / right)
-      if (keys.rollLeft) {
-        this.rotation.z += rollFactor * dt;
-      }
-      if (keys.rollRight) {
-        this.rotation.z -= rollFactor * dt;
+      if (typeof keys.roll === 'number') {
+        this.rotation.z += keys.roll * rollFactor * dt;
+      } else {
+        if (keys.rollLeft) {
+          this.rotation.z += rollFactor * dt;
+        }
+        if (keys.rollRight) {
+          this.rotation.z -= rollFactor * dt;
+        }
       }
       
       // Yaw (rudder direction pivot left / right)
-      if (keys.yawLeft) {
-        this.rotation.y += yawFactor * dt;
-      }
-      if (keys.yawRight) {
-        this.rotation.y -= yawFactor * dt;
+      if (typeof keys.yaw === 'number') {
+        this.rotation.y += keys.yaw * yawFactor * dt;
+      } else {
+        if (keys.yawLeft) {
+          this.rotation.y += yawFactor * dt;
+        }
+        if (keys.yawRight) {
+          this.rotation.y -= yawFactor * dt;
+        }
       }
 
-      // Roll recovery: gently auto-level roll a tiny bit if no roll keys pressed (safety/stability)
+      // Roll recovery: gently auto-level roll a tiny bit if no roll keys/joystick pressed (safety/stability)
       // Custom heavy auto-stability return for heavy strategic bombers
       const stabilizationRate = (this.aircraft.id === 'heavy_bomber' || this.aircraft.id === 'stealth_bomber') ? 2.5 : 1.5;
-      if (!keys.rollLeft && !keys.rollRight) {
+      const isRolling = typeof keys.roll === 'number' ? Math.abs(keys.roll) > 0.02 : (keys.rollLeft || keys.rollRight);
+      if (!isRolling) {
         this.rotation.z *= Math.exp(-stabilizationRate * dt);
       }
 

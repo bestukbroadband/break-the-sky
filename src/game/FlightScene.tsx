@@ -4,6 +4,7 @@ import { Play, Pause, RotateCcw, SkipBack, SkipForward, Camera, X } from 'lucide
 import { Aircraft, FlightTelemetry, GameMode, WeatherOption } from '../types';
 import { FlightPhysics } from './FlightPhysics';
 import { audioEngine } from '../utils/audioEngine';
+import MobileControls from '../components/MobileControls';
 import { WEATHER_OPTIONS } from '../data/weatherData';
 import { WeatherTransitioner } from './DynamicWeather';
 
@@ -47,6 +48,56 @@ export default function FlightScene({
   // States managed in React
   const [cameraMode, setCameraMode] = useState<string>('chase'); // chase, cockpit, wing, cinematic, topDown
   const [localReplayIndex, setLocalReplayIndex] = useState<number>(0);
+
+  // Mobile Audio State and handlers
+  const [isMuted, setIsMuted] = useState(audioEngine.getIsMuted());
+
+  const handleMuteToggle = () => {
+    const nextMuted = !isMuted;
+    audioEngine.setMute(nextMuted);
+    setIsMuted(nextMuted);
+  };
+
+  const handleCameraToggle = () => {
+    const modes = ['chase', 'cockpit', 'wing', 'cinematic', 'topDown'];
+    const nextIdx = (modes.indexOf(cameraMode) + 1) % modes.length;
+    const newMode = modes[nextIdx];
+    setCameraMode(newMode);
+    stateRef.current.cameraMode = newMode;
+  };
+
+  const handleResetFlight = () => {
+    if (!physicsRef.current) return;
+    
+    let startPos = new THREE.Vector3(0, 400, 2000);
+    let startRot = new THREE.Euler(0, 0, 0);
+
+    if (mode === 'landing_challenge') {
+      startPos.set(0, 250, 1500);
+      startRot.set(0, 0, 0);
+    } else if (mode === 'free_flight' || mode === 'coastal_tour' || mode === 'storm_flight') {
+      startPos.set(0, 1.2, 350);
+      startRot.set(0, 0, 0);
+    } else if (mode === 'mountain_run') {
+      startPos.set(0, 300, 2500);
+      startRot.set(0, 0, 0);
+    }
+
+    physicsRef.current.resetTo(startPos, startRot);
+    stateRef.current.currentCheckpointIndex = 0;
+    stateRef.current.checkpoints.forEach((ring) => {
+      ring.passed = false;
+      if (ring.mesh && ring.mesh.material && 'color' in ring.mesh.material) {
+        (ring.mesh.material as THREE.MeshBasicMaterial).color.setHex(0x00f0ff);
+      }
+    });
+    stateRef.current.landingTriggered = false;
+    stateRef.current.crashTriggered = false;
+    stateRef.current.peakSpeed = 0;
+    stateRef.current.peakAltitude = 0;
+    stateRef.current.flightDuration = 0;
+    setGamePaused(false);
+  };
 
   // Setup refs for live loop parameters
   const keysRef = useRef({
@@ -1507,7 +1558,15 @@ export default function FlightScene({
   }, [aircraft.id, mode]);
 
   return (
-    <div className="absolute inset-0 w-full h-full bg-slate-900 overflow-hidden">
+    <div 
+      className="absolute inset-0 w-full h-full bg-slate-900 overflow-hidden select-none"
+      style={{
+        touchAction: 'none',
+        userSelect: 'none',
+        WebkitUserSelect: 'none',
+        overscrollBehavior: 'none'
+      }}
+    >
       {/* Flight Canvas spot */}
       <div ref={mountRef} className="w-full h-full" />
 
@@ -1566,7 +1625,7 @@ export default function FlightScene({
 
       {/* Control instruction floating card */}
       {!isReplaying && (
-        <div className="absolute bottom-20 right-4 sm:right-6 max-w-xs bg-slate-950/85 border border-slate-800/80 p-3 rounded-xl pointer-events-none z-20 text-[9px] text-slate-400 space-y-1.5">
+        <div className="hidden sm:block absolute bottom-20 right-4 sm:right-6 max-w-xs bg-slate-950/85 border border-slate-800/80 p-3 rounded-xl pointer-events-none z-20 text-[9px] text-slate-400 space-y-1.5">
           <span className="font-bold text-slate-300 block border-b border-slate-900 pb-0.5">🎮 AUTOPILOT REFERENCE</span>
           <div><span className="text-sky-300 font-bold">W / S:</span> Engine Throttle Up/Down</div>
           <div><span className="text-sky-300 font-bold">↑ | ↓:</span> Nose pitch down / pitch up</div>
@@ -1576,6 +1635,20 @@ export default function FlightScene({
           <div><span className="text-sky-300 font-bold">B:</span> Apply wheel brakes (Grounded)</div>
           <div><span className="text-slate-300 font-bold">R Key / P Key:</span> Reset flight / Pause</div>
         </div>
+      )}
+
+      {/* Mobile Touch Overlay */}
+      {!isReplaying && (
+        <MobileControls
+          aircraft={aircraft}
+          keysRef={keysRef}
+          currentThrottle={physicsRef.current?.throttle || 0}
+          onCameraToggle={handleCameraToggle}
+          onPauseToggle={() => setGamePaused(!gamePaused)}
+          onResetToggle={handleResetFlight}
+          isMuted={isMuted}
+          onMuteToggle={handleMuteToggle}
+        />
       )}
 
       {/* 🎬 DYNAMIC REPLAY OVERLAY SYSTEM */}

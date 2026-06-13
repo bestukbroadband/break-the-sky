@@ -324,4 +324,10 @@ button, select, a {
   padding-top: env(safe-area-inset-top, 0px);
 }
 
+/* Enable smooth momentum/inertia scrolling on iOS screens */
+#home-screen {
+  -webkit-overflow-scrolling: touch;
+}
+
+
 
