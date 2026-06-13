@@ -1,6 +1,6 @@
 {
-  "name": "Break the Skyline",
-  "description": "An immersive 3D flight simulator where you push beyond the horizon and master the sky with realistic physics, diverse aircraft, customizable environments, and a premium digital cockpit.",
+  "name": "Break the Sky",
+  "description": "A cinematic mobile flight simulator with aircraft selection, missions and landing challenges.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

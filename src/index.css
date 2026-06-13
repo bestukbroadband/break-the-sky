@@ -185,19 +185,19 @@
   }
 
   /* Part 6 Classes - Home Screen Background Aircraft Animations */
-  @keyframes skyline-flyby-jet {
+  @keyframes sky-flyby-jet {
     0% { transform: translate(-150px, 120px) rotate(5deg) scale(0.4); opacity: 0; }
     5% { opacity: 0.12; }
     95% { opacity: 0.12; }
     100% { transform: translate(110vw, 40px) rotate(-5deg) scale(0.4); opacity: 0; }
   }
-  @keyframes skyline-flyby-bomber {
+  @keyframes sky-flyby-bomber {
     0% { transform: translate(110vw, -10px) rotate(-2deg) scale(0.6); opacity: 0; }
     5% { opacity: 0.08; }
     95% { opacity: 0.08; }
     100% { transform: translate(-150px, 80px) rotate(-15deg) scale(0.6); opacity: 0; }
   }
-  @keyframes skyline-flyby-prop {
+  @keyframes sky-flyby-prop {
     0% { transform: translate(-100px, 200px) rotate(8deg) scale(0.3); opacity: 0; }
     5% { opacity: 0.15; }
     50% { transform: translate(50vw, 150px) rotate(-2deg) scale(0.3); }
@@ -229,14 +229,14 @@
     filter: blur(1px);
   }
   .silhouetteJet {
-    animation: skyline-flyby-jet 32s linear infinite;
+    animation: sky-flyby-jet 32s linear infinite;
   }
   .silhouetteBomber {
-    animation: skyline-flyby-bomber 45s linear infinite;
+    animation: sky-flyby-bomber 45s linear infinite;
     animation-delay: 8s;
   }
   .silhouetteProp {
-    animation: skyline-flyby-prop 25s linear infinite;
+    animation: sky-flyby-prop 25s linear infinite;
     animation-delay: 15s;
   }
   .horizonGlow {
@@ -362,6 +362,27 @@ body.flight-mode {
 .weatherOverlay,
 .visualOverlay {
   pointer-events: none !important;
+}
+
+/* Mobile Controls Styling to prevent page scrolling/zooming and support pointer capturing */
+.mobileControlsContainer {
+  position: fixed;
+  inset: 0;
+  z-index: 50; /* Ensure high enough to sit above canvas and HUD */
+  pointer-events: none;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.mobileControlsContainer button,
+.virtualJoystick,
+.throttleSliderInput,
+.mobileControlButton {
+  pointer-events: auto !important;
+  touch-action: none !important;
+  user-select: none !important;
+  -webkit-user-select: none !important;
 }
 
 

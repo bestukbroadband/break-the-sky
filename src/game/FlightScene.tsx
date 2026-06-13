@@ -111,6 +111,10 @@ export default function FlightScene({
     throttleDown: false,
     brakes: false,
     landingGear: true,
+    pitch: 0,
+    roll: 0,
+    yaw: 0,
+    throttleOverride: undefined as number | undefined
   });
 
   const stateRef = useRef({

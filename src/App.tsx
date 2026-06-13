@@ -76,10 +76,10 @@ export default function App() {
     };
 
     try {
-      const storedStr = localStorage.getItem('skyline:flight_history') || localStorage.getItem('skyforge:flight_history');
+      const storedStr = localStorage.getItem('sky:flight_history') || localStorage.getItem('skyline:flight_history') || localStorage.getItem('skyforge:flight_history');
       const existing: FlightRecord[] = storedStr ? JSON.parse(storedStr) : [];
       const updated = [newRecord, ...existing];
-      localStorage.setItem('skyline:flight_history', JSON.stringify(updated.slice(0, 50)));
+      localStorage.setItem('sky:flight_history', JSON.stringify(updated.slice(0, 50)));
     } catch (e) {
       console.error('Failed to append to pilot logbook:', e);
     }

@@ -1,4 +1,4 @@
-// Web Audio API Procedural Flight Audio Synth Engine (Break the Skyline)
+// Web Audio API Procedural Flight Audio Synth Engine (Break the Sky)
 // Synthesizes authentic multi-stage rotating piston props, heavy bomber hums, and turbine jet sounds entirely in-browser
 
 class FlightAudioEngine {
@@ -27,7 +27,7 @@ class FlightAudioEngine {
   constructor() {
     // Lazily load initial settings
     try {
-      const persisted = localStorage.getItem('skyline:audio_muted');
+      const persisted = localStorage.getItem('sky:audio_muted') || localStorage.getItem('skyline:audio_muted');
       if (persisted !== null) {
         this.isMuted = persisted === 'true';
       }
@@ -432,7 +432,7 @@ class FlightAudioEngine {
   public setMute(muted: boolean) {
     this.isMuted = muted;
     try {
-      localStorage.setItem('skyline:audio_muted', muted ? 'true' : 'false');
+      localStorage.setItem('sky:audio_muted', muted ? 'true' : 'false');
     } catch (e) {
       console.warn("Storage write failed", e);
     }

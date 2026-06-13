@@ -1,4 +1,4 @@
-// Dynamic Weather System (Break the Skyline)
+// Dynamic Weather System (Break the Sky)
 // Manages smooth, gradual transitions of scene lighting, sky colors, fog densities,
 // and precipitation intensities during active flight sessions.
 

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Camera, Pause, Volume2, VolumeX, Shuffle, RotateCcw } from 'lucide-react';
+import { Camera, Pause, Volume2, VolumeX, RotateCcw } from 'lucide-react';
 import { Aircraft } from '../types';
 
 interface MobileControlsProps {
@@ -15,9 +15,9 @@ interface MobileControlsProps {
     throttleDown: boolean;
     brakes: boolean;
     landingGear: boolean;
-    pitch?: number;
-    roll?: number;
-    yaw?: number;
+    pitch: number;
+    roll: number;
+    yaw: number;
     throttleOverride?: number;
   }>;
   currentThrottle: number;
@@ -38,38 +38,47 @@ export default function MobileControls({
   isMuted,
   onMuteToggle,
 }: MobileControlsProps) {
-  // Joystick Touch Tracking
+  // Joystick Coordinates Tracker
   const [joystickPos, setJoystickPos] = useState({ x: 0, y: 0 });
   const [isDraggingJoystick, setIsDraggingJoystick] = useState(false);
   const joystickContainerRef = useRef<HTMLDivElement>(null);
-  const activeTouchId = useRef<number | null>(null);
+  const activePointerId = useRef<number | null>(null);
 
-  // Throttle values (0 to 100)
+  // Dynamic Throttle (scaled 0-100)
   const [localThrottle, setLocalThrottle] = useState(currentThrottle);
   const throttleTrackRef = useRef<HTMLDivElement>(null);
 
-  // Sync initial dynamic values
+  // continuous buttons local feedback states
+  const [activeYaw, setActiveYaw] = useState<'L' | 'R' | null>(null);
+  const [brakesActive, setBrakesActive] = useState(false);
+
+  // Toggle for debug HUD
+  const [showDebug, setShowDebug] = useState(true);
+
+  // Sync throttle value from physics on startup or change
   useEffect(() => {
     setLocalThrottle(Math.round(currentThrottle));
   }, [currentThrottle]);
 
-  // Clean values on unmount
+  // Clean values on unmount to make sure controls don't stick on game reset or screen leave
   useEffect(() => {
     return () => {
       if (keysRef.current) {
         keysRef.current.pitch = 0;
         keysRef.current.roll = 0;
         keysRef.current.yaw = 0;
+        keysRef.current.yawLeft = false;
+        keysRef.current.yawRight = false;
+        keysRef.current.brakes = false;
         delete keysRef.current.throttleOverride;
       }
     };
   }, [keysRef]);
 
-  // --- JOYSTICK LOGIC ---
-  const handleJoystickStart = (clientX: number, clientY: number, identifier: number | null) => {
-    if (!joystickContainerRef.current) return;
+  // --- JOYSTICK GESTURE INTERACTION ---
+  const handleJoystickStart = (clientX: number, clientY: number, pointerId: number) => {
     setIsDraggingJoystick(true);
-    activeTouchId.current = identifier;
+    activePointerId.current = pointerId;
     handleJoystickMove(clientX, clientY);
   };
 
@@ -81,7 +90,7 @@ export default function MobileControls({
 
     const dx = clientX - centerX;
     const dy = clientY - centerY;
-    const maxRadius = rect.width / 2; // e.g. 64px radius
+    const maxRadius = rect.width / 2;
 
     const distance = Math.sqrt(dx * dx + dy * dy);
     let targetX = dx;
@@ -94,344 +103,363 @@ export default function MobileControls({
 
     setJoystickPos({ x: targetX, y: targetY });
 
-    // Normalized analog values between -1 and 1
+    // Calculate normalized output values [-1.0, 1.0]
     let normX = targetX / maxRadius;
     let normY = targetY / maxRadius;
 
-    // Apply soft deadzone near center
+    // Apply soft deadzone safety margin
     const DEADZONE = 0.08;
     if (Math.abs(normX) < DEADZONE) normX = 0;
     if (Math.abs(normY) < DEADZONE) normY = 0;
 
     // Map:
-    // Drag left (normX < 0) => Roll Left (positive roll command)
-    // Drag right (normX > 0) => Roll Right (negative roll command)
-    // Drag up (normY < 0) => Pitch Down (negative pitch command)
-    // Drag down (normY > 0) => Pitch Up (positive pitch command)
+    // Drag left (normX < 0) => Roll Left (positive keysRef.current.roll)
+    // Drag right (normX > 0) => Roll Right (negative keysRef.current.roll)
+    // Drag up (normY < 0) => Pitch Down (negative keysRef.current.pitch)
+    // Drag down (normY > 0) => Pitch Up (positive keysRef.current.pitch)
     keysRef.current.roll = -normX;
-    keysRef.current.pitch = -normY;
+    keysRef.current.pitch = normY;
   };
 
   const handleJoystickEnd = () => {
     setIsDraggingJoystick(false);
-    activeTouchId.current = null;
+    activePointerId.current = null;
     setJoystickPos({ x: 0, y: 0 });
     keysRef.current.roll = 0;
     keysRef.current.pitch = 0;
   };
 
-  // Touch handlers for Joystick
-  const onJoystickTouchStart = (e: React.TouchEvent) => {
+  // Modern Universal Pointer Event Handlers
+  const onJoystickPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
     e.preventDefault();
-    const touch = e.changedTouches[0];
-    handleJoystickStart(touch.clientX, touch.clientY, touch.identifier);
+    e.currentTarget.setPointerCapture(e.pointerId);
+    handleJoystickStart(e.clientX, e.clientY, e.pointerId);
   };
 
-  const onJoystickTouchMove = (e: React.TouchEvent) => {
-    if (!isDraggingJoystick) return;
+  const onJoystickPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!isDraggingJoystick || activePointerId.current !== e.pointerId) return;
     e.preventDefault();
-    for (let i = 0; i < e.touches.length; i++) {
-      if (e.touches[i].identifier === activeTouchId.current) {
-        handleJoystickMove(e.touches[i].clientX, e.touches[i].clientY);
-        break;
-      }
-    }
+    handleJoystickMove(e.clientX, e.clientY);
   };
 
-  // Mouse fallback handlers for testability
-  const onJoystickMouseDown = (e: React.MouseEvent) => {
-    handleJoystickStart(e.clientX, e.clientY, null);
-    const onMouseMove = (moveEvent: MouseEvent) => {
-      handleJoystickMove(moveEvent.clientX, moveEvent.clientY);
-    };
-    const onMouseUp = () => {
-      handleJoystickEnd();
-      window.removeEventListener('mousemove', onMouseMove);
-      window.removeEventListener('mouseup', onMouseUp);
-    };
-    window.addEventListener('mousemove', onMouseMove);
-    window.addEventListener('mouseup', onMouseUp);
+  const onJoystickPointerUpOrCancel = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (activePointerId.current !== e.pointerId) return;
+    e.preventDefault();
+    e.currentTarget.releasePointerCapture(e.pointerId);
+    handleJoystickEnd();
   };
 
-  // --- THROTTLE SLIDER LOGIC ---
+
+  // --- THROTTLE GESTURE SLIDER INTERACTION ---
   const handleThrottleStartOrMove = (clientY: number) => {
     if (!throttleTrackRef.current) return;
     const rect = throttleTrackRef.current.getBoundingClientRect();
-    // Invert so bottom of container is 0, top of container is 100
     const relativeY = rect.bottom - clientY;
     const fillPercent = Math.max(0, Math.min(100, (relativeY / rect.height) * 100));
 
-    setLocalThrottle(Math.round(fillPercent));
-    keysRef.current.throttleOverride = fillPercent;
+    const finalVal = Math.round(fillPercent);
+    setLocalThrottle(finalVal);
+    keysRef.current.throttleOverride = finalVal;
   };
 
-  const onThrottleTouchStart = (e: React.TouchEvent) => {
+  const onThrottlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
     e.preventDefault();
-    const touch = e.touches[0];
-    handleThrottleStartOrMove(touch.clientY);
-  };
-
-  const onThrottleTouchMove = (e: React.TouchEvent) => {
-    e.preventDefault();
-    const touch = e.touches[0];
-    handleThrottleStartOrMove(touch.clientY);
-  };
-
-  const onThrottleMouseDown = (e: React.MouseEvent) => {
+    e.currentTarget.setPointerCapture(e.pointerId);
     handleThrottleStartOrMove(e.clientY);
-    const onMouseMove = (moveEvent: MouseEvent) => {
-      handleThrottleStartOrMove(moveEvent.clientY);
-    };
-    const onMouseUp = () => {
-      window.removeEventListener('mousemove', onMouseMove);
-      window.removeEventListener('mouseup', onMouseUp);
-    };
-    window.addEventListener('mousemove', onMouseMove);
-    window.addEventListener('mouseup', onMouseUp);
   };
 
-  // --- BRAKES & YAW CONTROLS (Continuous press) ---
-  const setKeyVal = (key: 'brakes' | 'yawLeft' | 'yawRight', pressed: boolean) => {
-    if (keysRef.current) {
-      keysRef.current[key] = pressed;
+  const onThrottlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    if (e.currentTarget.hasPointerCapture(e.pointerId)) {
+      handleThrottleStartOrMove(e.clientY);
     }
   };
 
-  const [activeYaw, setActiveYaw] = useState<'L' | 'R' | null>(null);
-  const [brakesActive, setBrakesActive] = useState(false);
+  const onThrottlePointerUpOrCancel = (e: React.PointerEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.currentTarget.releasePointerCapture(e.pointerId);
+  };
+
+
+  // --- RUDDER YAW AND BRAKES CONTROLLERS (Continuous triggers) ---
+  const handleYawLeftDown = (e: React.PointerEvent) => {
+    e.preventDefault();
+    keysRef.current.yawLeft = true;
+    keysRef.current.yaw = -1.0;
+    setActiveYaw('L');
+  };
+
+  const handleYawLeftUpOrCancel = (e: React.PointerEvent) => {
+    e.preventDefault();
+    keysRef.current.yawLeft = false;
+    keysRef.current.yaw = 0;
+    if (activeYaw === 'L') {
+      setActiveYaw(null);
+    }
+  };
+
+  const handleYawRightDown = (e: React.PointerEvent) => {
+    e.preventDefault();
+    keysRef.current.yawRight = true;
+    keysRef.current.yaw = 1.0;
+    setActiveYaw('R');
+  };
+
+  const handleYawRightUpOrCancel = (e: React.PointerEvent) => {
+    e.preventDefault();
+    keysRef.current.yawRight = false;
+    keysRef.current.yaw = 0;
+    if (activeYaw === 'R') {
+      setActiveYaw(null);
+    }
+  };
+
+  const handleBrakesDown = (e: React.PointerEvent) => {
+    e.preventDefault();
+    keysRef.current.brakes = true;
+    setBrakesActive(true);
+  };
+
+  const handleBrakesUpOrCancel = (e: React.PointerEvent) => {
+    e.preventDefault();
+    keysRef.current.brakes = false;
+    setBrakesActive(false);
+  };
+
+
+  // --- EDGE-TRIGGERED IMMEDIATE ACTION TOGGLES ---
+  const handleGearTap = (e: React.PointerEvent) => {
+    e.preventDefault();
+    if (keysRef.current) {
+      keysRef.current.landingGear = !keysRef.current.landingGear;
+    }
+  };
+
+  const handleCameraTap = (e: React.PointerEvent) => {
+    e.preventDefault();
+    onCameraToggle();
+  };
+
+  const handleMuteTap = (e: React.PointerEvent) => {
+    e.preventDefault();
+    onMuteToggle();
+  };
+
+  const handleResetTap = (e: React.PointerEvent) => {
+    e.preventDefault();
+    onResetToggle();
+  };
+
+  const handlePauseTap = (e: React.PointerEvent) => {
+    e.preventDefault();
+    onPauseToggle();
+  };
 
   return (
-    <div 
-      className="absolute inset-0 pointer-events-none select-none z-[20] flex flex-col justify-between p-4 sm:p-6 sm:hidden lg:hidden"
-      style={{
-        paddingTop: 'env(safe-area-inset-top, 16px)',
-        paddingBottom: 'calc(16px + env(safe-area-inset-bottom, 0px))',
-        paddingLeft: 'env(safe-area-inset-left, 16px)',
-        paddingRight: 'env(safe-area-inset-right, 16px)',
-      }}
-    >
-      {/* 1. TOP UTILE ACTIONS (CAM, GEAR, RESET, PAUSE, MUTE) */}
-      <div className="w-full flex justify-between items-center z-[21]">
-        {/* Left corner mini cluster */}
-        <div className="flex gap-2 pointer-events-auto">
-          {aircraft.hasLandingGear && aircraft.id !== 'seaplane' && (
+    <div className="mobileControlsContainer select-none pointer-events-none">
+      
+      {/* Absolute floating wrappers to position layout dynamically */}
+      <div 
+        className="absolute inset-0 flex flex-col justify-between p-4"
+        style={{
+          paddingTop: 'calc(10px + env(safe-area-inset-top, 16px))',
+          paddingBottom: 'calc(10px + env(safe-area-inset-bottom, 16px))',
+          paddingLeft: 'calc(10px + env(safe-area-inset-left, 16px))',
+          paddingRight: 'calc(10px + env(safe-area-inset-right, 16px))',
+        }}
+      >
+        {/* 1. TOP UTILITY ACTION BAR */}
+        <div className="w-full flex justify-between items-center z-[51] pointer-events-none">
+          {/* Left quick settings items */}
+          <div className="flex gap-2">
+            {aircraft.hasLandingGear && aircraft.id !== 'seaplane' && (
+              <button
+                onPointerDown={handleGearTap}
+                className={`h-11 px-3.5 rounded-xl border font-bold text-[10px] tracking-wider transition-all font-mono shadow-md cursor-pointer mobileControlButton ${
+                  keysRef.current?.landingGear
+                    ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-300 shadow-[0_0_10px_rgba(16,185,129,0.15)]'
+                    : 'bg-slate-900/80 border-slate-800 text-slate-400'
+                }`}
+              >
+                GEAR
+              </button>
+            )}
+
             <button
-              onClick={() => {
-                if (keysRef.current) {
-                  keysRef.current.landingGear = !keysRef.current.landingGear;
-                }
-              }}
-              className={`h-11 px-3.5 rounded-xl border font-bold text-[10px] tracking-wider transition-all font-mono shadow-md ${
-                keysRef.current?.landingGear
-                  ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-300 shadow-[0_0_10px_rgba(16,185,129,0.15)]'
+              onPointerDown={handleBrakesDown}
+              onPointerUp={handleBrakesUpOrCancel}
+              onPointerCancel={handleBrakesUpOrCancel}
+              onPointerLeave={handleBrakesUpOrCancel}
+              className={`h-11 px-3.5 rounded-xl border font-bold text-[10px] tracking-wider transition-all font-mono shadow-md cursor-pointer mobileControlButton ${
+                brakesActive
+                  ? 'bg-red-500/25 border-red-500/40 text-red-300 shadow-[0_0_10px_rgba(239,68,68,0.15)]'
                   : 'bg-slate-900/80 border-slate-800 text-slate-400'
               }`}
             >
-              GEAR
+              BRAKE
             </button>
+          </div>
+
+          {/* Clean Top-Center Small Debug Overlay */}
+          {showDebug && (
+            <div 
+              onPointerDown={(e) => { e.preventDefault(); setShowDebug(false); }}
+              className="hidden xs:flex bg-slate-950/85 border border-slate-800/80 rounded-xl px-3 py-1.5 flex-row gap-4 text-[8px] font-mono text-slate-400 pointer-events-auto shadow-lg backdrop-blur-xs cursor-pointer"
+              title="Tap to hide flight telemetry"
+            >
+              <div>ROLL: <span className="font-extrabold text-sky-400">{(keysRef.current?.roll || 0).toFixed(2)}</span></div>
+              <div>PITCH: <span className="font-extrabold text-sky-400">{(keysRef.current?.pitch || 0).toFixed(2)}</span></div>
+              <div>YAW: <span className="font-extrabold text-sky-400">{(keysRef.current?.yaw || 0).toFixed(1)}</span></div>
+              <div>THR: <span className="font-extrabold text-amber-500">{localThrottle}%</span></div>
+              <div>BRK: <span className={`font-extrabold ${brakesActive ? 'text-red-400 animate-pulse' : 'text-slate-500'}`}>{brakesActive ? 'ACTIVE' : 'OFF'}</span></div>
+            </div>
           )}
 
-          <button
-            onClick={() => {
-              if (keysRef.current) {
-                setKeyVal('brakes', true);
-                setBrakesActive(true);
-                setTimeout(() => {
-                  setKeyVal('brakes', false);
-                  setBrakesActive(false);
-                }, 1500); // safety reset auto-brake release
-              }
-            }}
-            onTouchStart={() => {
-              setKeyVal('brakes', true);
-              setBrakesActive(true);
-            }}
-            onTouchEnd={() => {
-              setKeyVal('brakes', false);
-              setBrakesActive(false);
-            }}
-            onMouseDown={() => {
-              setKeyVal('brakes', true);
-              setBrakesActive(true);
-            }}
-            onMouseUp={() => {
-              setKeyVal('brakes', false);
-              setBrakesActive(false);
-            }}
-            className={`h-11 px-3.5 rounded-xl border font-bold text-[10px] tracking-wider transition-all font-mono shadow-md ${
-              brakesActive
-                ? 'bg-red-500/25 border-red-500/40 text-red-300 shadow-[0_0_10px_rgba(239,68,68,0.15)]'
-                : 'bg-slate-900/80 border-slate-800 text-slate-400'
-            }`}
-          >
-            BRAKE
-          </button>
-        </div>
-
-        {/* Right corner operational cluster */}
-        <div className="flex gap-1.5 pointer-events-auto bg-slate-950/80 border border-slate-900 p-1.5 rounded-2xl shadow-xl backdrop-blur-md">
-          <button
-            onClick={onCameraToggle}
-            className="w-10 h-10 rounded-xl bg-slate-900/80 hover:bg-slate-850 text-slate-300 hover:text-white flex items-center justify-center border border-slate-800 transition-all"
-            title="Cycle Camera View"
-          >
-            <Camera className="w-4 h-4" />
-          </button>
-
-          <button
-            onClick={onMuteToggle}
-            className="w-10 h-10 rounded-xl bg-slate-900/80 hover:bg-slate-850 text-slate-300 hover:text-white flex items-center justify-center border border-slate-800 transition-all"
-            title="Toggle Audio"
-          >
-            {isMuted ? <VolumeX className="w-4 h-4 text-red-400" /> : <Volume2 className="w-4 h-4 text-sky-400" />}
-          </button>
-
-          <button
-            onClick={onResetToggle}
-            className="w-10 h-10 rounded-xl bg-slate-900/80 hover:bg-slate-850 text-slate-300 hover:text-white flex items-center justify-center border border-slate-800 transition-all"
-            title="Restart Flight"
-          >
-            <RotateCcw className="w-4 h-4 text-amber-500" />
-          </button>
-
-          <button
-            onClick={onPauseToggle}
-            className="w-10 h-10 rounded-xl bg-slate-900/80 hover:bg-slate-850 text-slate-300 hover:text-white flex items-center justify-center border border-slate-800 transition-all"
-            title="Pause Flight"
-          >
-            <Pause className="w-4 h-4 text-slate-200" />
-          </button>
-        </div>
-      </div>
-
-      {/* 2. DYNAMIC BOTTOM OPERATIONAL PANELS */}
-      <div className="w-full flex justify-between items-end z-[21] relative select-none">
-        
-        {/* LEFT COMPONENT: ANALOG JOYSTICK PANEL */}
-        <div className="flex flex-col items-center space-y-2 pointer-events-auto">
-          <span className="text-[8px] font-bold text-slate-500 uppercase tracking-widest font-mono">PITCH & ROLL</span>
-          
-          <div 
-            ref={joystickContainerRef}
-            className={`relative w-28 h-28 rounded-full border-2 bg-slate-950/75 backdrop-blur-sm shadow-2xl flex items-center justify-center transition-all ${
-              isDraggingJoystick 
-                ? 'border-sky-450 shadow-[0_0_15px_rgba(56,189,248,0.22)] scale-[1.03]' 
-                : 'border-slate-800'
-            }`}
-            onTouchStart={onJoystickTouchStart}
-            onTouchMove={onJoystickTouchMove}
-            onTouchEnd={handleJoystickEnd}
-            onMouseDown={onJoystickMouseDown}
-            style={{ touchAction: 'none' }}
-          >
-            {/* Center Deadzone Crosshairs */}
-            <div className="absolute w-4 h-[1px] bg-slate-800" />
-            <div className="absolute h-4 w-[1px] bg-slate-800" />
-
-            {/* Glowing stick knob indicator */}
-            <div 
-              className="absolute w-11 h-11 rounded-full bg-linear-to-b from-sky-400 to-sky-600 border border-white/20 flex items-center justify-center shadow-xl cursor-grab active:cursor-grabbing transition-transform duration-75 select-none"
-              style={{
-                transform: `translate(${joystickPos.x}px, ${joystickPos.y}px)`,
-                boxShadow: isDraggingJoystick ? '0 0 15px rgba(56,189,248,0.6)' : '0 4px 8px rgba(0,0,0,0.4)',
-              }}
+          {/* Right corner operation badges */}
+          <div className="flex gap-1.5 bg-slate-950/80 border border-slate-900/90 p-1.5 rounded-2xl shadow-xl backdrop-blur-md">
+            <button
+              onPointerDown={handleCameraTap}
+              className="w-10 h-10 rounded-xl bg-slate-900/80 hover:bg-slate-850 text-slate-300 hover:text-white flex items-center justify-center border border-slate-800 transition-all cursor-pointer mobileControlButton"
+              title="Change Viewpoint"
             >
-              {/* Inner dot */}
-              <div className="w-3.5 h-3.5 rounded-full bg-slate-100 opacity-60" />
-            </div>
+              <Camera className="w-4 h-4" />
+            </button>
+
+            <button
+              onPointerDown={handleMuteTap}
+              className="w-10 h-10 rounded-xl bg-slate-900/80 hover:bg-slate-850 text-slate-300 hover:text-white flex items-center justify-center border border-slate-800 transition-all cursor-pointer mobileControlButton"
+              title="Toggle Audio"
+            >
+              {isMuted ? <VolumeX className="w-4 h-4 text-red-400" /> : <Volume2 className="w-4 h-4 text-sky-400" />}
+            </button>
+
+            <button
+              onPointerDown={handleResetTap}
+              className="w-10 h-10 rounded-xl bg-slate-900/80 hover:bg-slate-850 text-slate-300 hover:text-white flex items-center justify-center border border-slate-800 transition-all cursor-pointer mobileControlButton"
+              title="Restart Level"
+            >
+              <RotateCcw className="w-4 h-4 text-amber-500" />
+            </button>
+
+            <button
+              onPointerDown={handlePauseTap}
+              className="w-10 h-10 rounded-xl bg-slate-900/80 hover:bg-slate-850 text-slate-300 hover:text-white flex items-center justify-center border border-slate-800 transition-all cursor-pointer mobileControlButton"
+              title="Pause Simulation"
+            >
+              <Pause className="w-4 h-4 text-slate-200" />
+            </button>
           </div>
         </div>
 
-        {/* MID-BOTTOM: RUDDER CONTROLS (YAW RUDDERS) */}
-        <div className="flex items-center gap-1.5 pointer-events-auto pb-1">
-          <button
-            onTouchStart={() => {
-              setKeyVal('yawLeft', true);
-              setActiveYaw('L');
-            }}
-            onTouchEnd={() => {
-              setKeyVal('yawLeft', false);
-              setActiveYaw(null);
-            }}
-            onMouseDown={() => {
-              setKeyVal('yawLeft', true);
-              setActiveYaw('L');
-            }}
-            onMouseUp={() => {
-              setKeyVal('yawLeft', false);
-              setActiveYaw(null);
-            }}
-            className={`h-11 px-3.5 rounded-xl border font-bold text-[10px] tracking-wider transition-all font-mono shadow-md ${
-              activeYaw === 'L'
-                ? 'bg-sky-500/25 border-sky-400/40 text-sky-300'
-                : 'bg-slate-900/85 border-slate-800 text-slate-400 hover:text-slate-200'
-            }`}
-          >
-            YAW L
-          </button>
+        {/* 2. DYNAMIC BOTTOM MAIN TOUCH CONTROL PANELS */}
+        <div className="w-full flex justify-between items-end z-[51] pointer-events-none">
           
-          <button
-            onTouchStart={() => {
-              setKeyVal('yawRight', true);
-              setActiveYaw('R');
-            }}
-            onTouchEnd={() => {
-              setKeyVal('yawRight', false);
-              setActiveYaw(null);
-            }}
-            onMouseDown={() => {
-              setKeyVal('yawRight', true);
-              setActiveYaw('R');
-            }}
-            onMouseUp={() => {
-              setKeyVal('yawRight', false);
-              setActiveYaw(null);
-            }}
-            className={`h-11 px-3.5 rounded-xl border font-bold text-[10px] tracking-wider transition-all font-mono shadow-md ${
-              activeYaw === 'R'
-                ? 'bg-sky-500/25 border-sky-400/40 text-sky-300'
-                : 'bg-slate-900/85 border-slate-800 text-slate-400 hover:text-slate-200'
-            }`}
-          >
-            YAW R
-          </button>
-        </div>
-
-        {/* RIGHT COMPONENT: INTEGRATED THROTTLE SYSTEM */}
-        {aircraft.hasEngine && (
-          <div className="flex flex-col items-center space-y-2 pointer-events-auto">
-            <span className="text-[8px] font-bold text-amber-500 uppercase tracking-widest font-mono">
-              THR: {localThrottle}%
-            </span>
+          {/* LEFT PANEL: VIRTUAL FLIGHT ANALOG STICK */}
+          <div className="flex flex-col items-center space-y-2">
+            <span className="text-[7.5px] font-bold text-slate-500 uppercase tracking-widest font-mono">JOYSTICK (PITCH/ROLL)</span>
             
             <div 
-              ref={throttleTrackRef}
-              className="relative w-12 h-32 rounded-xl bg-slate-950/80 border border-slate-800 p-1 flex items-end justify-center cursor-pointer shadow-2xl select-none"
-              onTouchStart={onThrottleTouchStart}
-              onTouchMove={onThrottleTouchMove}
-              onMouseDown={onThrottleMouseDown}
-              style={{ touchAction: 'none' }}
+              ref={joystickContainerRef}
+              onPointerDown={onJoystickPointerDown}
+              onPointerMove={onJoystickPointerMove}
+              onPointerUp={onJoystickPointerUpOrCancel}
+              onPointerCancel={onJoystickPointerUpOrCancel}
+              onPointerLeave={onJoystickPointerUpOrCancel}
+              className={`relative w-28 h-28 rounded-full border-2 bg-slate-950/75 backdrop-blur-sm shadow-2xl flex items-center justify-center transition-all virtualJoystick cursor-grab ${
+                isDraggingJoystick 
+                  ? 'border-sky-400 shadow-[0_0_15px_rgba(56,189,248,0.22)] scale-[1.03]' 
+                  : 'border-slate-800'
+              }`}
             >
-              {/* Colored power filling bar */}
-              <div 
-                className="absolute bottom-1 left-1 right-1 rounded-lg bg-linear-to-t from-orange-600 via-amber-500 to-amber-400 transition-all duration-75"
-                style={{ height: `calc(${localThrottle}% - 8px)` }}
-              />
+              {/* Target guidelines */}
+              <div className="absolute w-4 h-[1px] bg-slate-800 pointer-events-none" />
+              <div className="absolute h-4 w-[1px] bg-slate-800 pointer-events-none" />
 
-              {/* Slider thumb handle indicator */}
+              {/* Positioned Joystick Handle/Thumb knob */}
               <div 
-                className="absolute left-0 right-0 h-6 bg-slate-100 border-t border-b border-slate-350 rounded shadow-md z-10 flex items-center justify-center text-[7px] text-slate-700 font-extrabold select-none"
-                style={{ 
-                  bottom: `calc(${localThrottle}% - 12px)`,
-                  transition: 'bottom 75ms linear'
+                className="absolute w-11 h-11 rounded-full bg-gradient-to-b from-sky-400 to-sky-600 border border-white/20 flex items-center justify-center shadow-xl select-none pointer-events-none"
+                style={{
+                  transform: `translate(${joystickPos.x}px, ${joystickPos.y}px)`,
+                  boxShadow: isDraggingJoystick ? '0 0 15px rgba(56,189,248,0.6)' : '0 4px 8px rgba(0,0,0,0.4)',
+                  transition: isDraggingJoystick ? 'none' : 'transform 150ms cubic-bezier(0.16, 1, 0.3, 1)'
                 }}
               >
-                |||
+                {/* Visual marker */}
+                <div className="w-3.5 h-3.5 rounded-full bg-slate-100 opacity-60" />
               </div>
             </div>
           </div>
-        )}
+
+          {/* LOWER CENTER PANEL: RUDDER YAW TRIGGERS */}
+          <div className="flex items-center gap-1.5 pb-1">
+            <button
+              onPointerDown={handleYawLeftDown}
+              onPointerUp={handleYawLeftUpOrCancel}
+              onPointerCancel={handleYawLeftUpOrCancel}
+              onPointerLeave={handleYawLeftUpOrCancel}
+              className={`h-11 px-3.5 rounded-xl border font-bold text-[10px] tracking-wider transition-all font-mono shadow-md cursor-pointer mobileControlButton ${
+                activeYaw === 'L'
+                  ? 'bg-sky-500/25 border-sky-450 text-sky-300'
+                  : 'bg-slate-900/85 border-slate-800 text-slate-400'
+              }`}
+            >
+              YAW L
+            </button>
+            
+            <button
+              onPointerDown={handleYawRightDown}
+              onPointerUp={handleYawRightUpOrCancel}
+              onPointerCancel={handleYawRightUpOrCancel}
+              onPointerLeave={handleYawRightUpOrCancel}
+              className={`h-11 px-3.5 rounded-xl border font-bold text-[10px] tracking-wider transition-all font-mono shadow-md cursor-pointer mobileControlButton ${
+                activeYaw === 'R'
+                  ? 'bg-sky-500/25 border-sky-450 text-sky-300'
+                  : 'bg-slate-900/85 border-slate-800 text-slate-400'
+              }`}
+            >
+              YAW R
+            </button>
+          </div>
+
+          {/* RIGHT PANEL: VERTICAL POWER THROTTLE SLIDER */}
+          {aircraft.hasEngine && (
+            <div className="flex flex-col items-center space-y-2">
+              <span className="text-[7.5px] font-bold text-amber-500 uppercase tracking-widest font-mono">
+                POWER: {localThrottle}%
+              </span>
+              
+              <div 
+                ref={throttleTrackRef}
+                onPointerDown={onThrottlePointerDown}
+                onPointerMove={onThrottlePointerMove}
+                onPointerUp={onThrottlePointerUpOrCancel}
+                onPointerCancel={onThrottlePointerUpOrCancel}
+                onPointerLeave={onThrottlePointerUpOrCancel}
+                className="relative w-12 h-32 rounded-xl bg-slate-950/80 border border-slate-800 p-1 flex items-end justify-center cursor-ns-resize shadow-2xl throttleSlider throttleSliderInput"
+              >
+                {/* Dynamically sizing throttle bar */}
+                <div 
+                  className="absolute bottom-1 left-1 right-1 rounded-lg bg-gradient-to-t from-orange-600 via-amber-500 to-amber-400 transition-all duration-75 pointer-events-none"
+                  style={{ height: `calc(${localThrottle}% - 8px)` }}
+                />
+
+                {/* Tactile slide handle thumb indicator */}
+                <div 
+                  className="absolute left-0 right-0 h-6 bg-slate-100 border-t border-b border-slate-300 rounded shadow-md z-10 flex items-center justify-center text-[7px] text-slate-705 font-extrabold select-none pointer-events-none"
+                  style={{ 
+                    bottom: `calc(${localThrottle}% - 12px)`,
+                    transition: 'bottom 75ms linear'
+                  }}
+                >
+                  |||
+                </div>
+              </div>
+            </div>
+          )}
+
+        </div>
       </div>
+
     </div>
   );
 }

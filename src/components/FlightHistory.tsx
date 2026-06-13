@@ -35,7 +35,7 @@ export default function FlightHistory({ onClose, inline = false }: FlightHistory
   // Load history from localStorage
   useEffect(() => {
     try {
-      const stored = localStorage.getItem('skyline:flight_history') || localStorage.getItem('skyforge:flight_history');
+      const stored = localStorage.getItem('sky:flight_history') || localStorage.getItem('skyline:flight_history') || localStorage.getItem('skyforge:flight_history');
       if (stored) {
         const parsed = JSON.parse(stored) as FlightRecord[];
         // Sort by newest timestamp first
@@ -49,6 +49,7 @@ export default function FlightHistory({ onClose, inline = false }: FlightHistory
   // Clear all logs
   const handleClearAll = () => {
     try {
+      localStorage.removeItem('sky:flight_history');
       localStorage.removeItem('skyline:flight_history');
       localStorage.removeItem('skyforge:flight_history');
       setHistory([]);
@@ -246,7 +247,7 @@ export default function FlightHistory({ onClose, inline = false }: FlightHistory
             <BookOpen className="w-5 h-5" />
           </div>
           <div>
-            <h3 className="text-lg font-black font-sans tracking-wider text-white uppercase">BREAK THE SKYLINE PILOT LOGBOOK</h3>
+            <h3 className="text-lg font-black font-sans tracking-wider text-white uppercase">BREAK THE SKY PILOT LOGBOOK</h3>
             <p className="text-xs text-slate-400 font-mono">Telemetry database persistent logs (LocalStorage)</p>
           </div>
         </div>

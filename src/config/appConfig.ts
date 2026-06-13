@@ -1,7 +1,7 @@
 export const APP_CONFIG = {
-  name: "Break the Skyline",
-  shortName: "Skyline",
+  name: "Break the Sky",
+  shortName: "Sky",
   tagline: "Push beyond the horizon. Master the sky.",
-  description: "Choose your aircraft, push beyond the horizon and master a living sky shaped by speed, weather and precision.",
+  description: "A cinematic mobile flight simulator with aircraft selection, missions and landing challenges.",
   technicalLabel: "3D Flight Simulator"
 };

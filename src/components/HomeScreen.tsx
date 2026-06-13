@@ -179,13 +179,13 @@ export default function HomeScreen({ onStart, onOpenLogbook }: HomeScreenProps) 
         {/* Left Side: Game Intro */}
         <div className="w-full lg:w-1/2 space-y-6">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-md bg-blue-500/10 border border-blue-500/20 text-xs text-blue-400 font-mono">
-            <span>SKYLINE FLIGHT ENGINE v1.0</span>
+            <span>BREAK THE SKY ENGINE v1.0</span>
           </div>
           
           <h2 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight text-white leading-none">
             Break the <br />
             <span className="text-transparent bg-clip-text bg-linear-to-r from-sky-400 via-blue-400 to-indigo-400">
-              Skyline
+              Sky
             </span>
           </h2>
           
