@@ -1,0 +1,6 @@
+{
+  "name": "Break the Skyline",
+  "description": "An immersive 3D flight simulator where you push beyond the horizon and master the sky with realistic physics, diverse aircraft, customizable environments, and a premium digital cockpit.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
