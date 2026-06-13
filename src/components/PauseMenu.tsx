@@ -22,8 +22,8 @@ export default function PauseMenu({
   onWatchReplay,
 }: PauseMenuProps) {
   return (
-    <div id="pause-screen-overlay" className="absolute inset-0 bg-slate-950/80 backdrop-blur-md z-30 flex items-center justify-center p-4">
-      <div className="max-w-xl w-full bg-slate-900 border-2 border-slate-800 p-6 sm:p-8 rounded-2xl shadow-2xl relative space-y-6">
+    <div id="pause-screen-overlay" className="absolute inset-0 bg-slate-950/80 backdrop-blur-md z-30 overflow-y-auto flex items-start sm:items-center justify-center p-4 py-8">
+      <div className="max-w-xl w-full bg-slate-900 border-2 border-slate-800 p-5 sm:p-8 rounded-2xl shadow-2xl relative space-y-4 my-auto">
         
         {/* Glow corner light */}
         <div className="absolute top-0 right-0 w-32 h-32 bg-sky-500/10 rounded-full blur-2xl pointer-events-none" />

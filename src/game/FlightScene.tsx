@@ -257,11 +257,12 @@ export default function FlightScene({
 
     const camera = new THREE.PerspectiveCamera(60, width / height, 0.5, 20000);
     
-    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
+    const isMobileDevice = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+    const renderer = new THREE.WebGLRenderer({ antialias: !isMobileDevice, alpha: false, powerPreference: "high-performance" });
     renderer.setSize(width, height);
-    renderer.shadowMap.enabled = true;
-    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.shadowMap.enabled = !isMobileDevice; // Disable directional shadows on mobile for massive rendering gains
+    renderer.shadowMap.type = THREE.BasicShadowMap;
+    renderer.setPixelRatio(isMobileDevice ? 1.5 : Math.min(window.devicePixelRatio, 2));
 
     mountRef.current.innerHTML = '';
     mountRef.current.appendChild(renderer.domElement);
@@ -805,7 +806,8 @@ export default function FlightScene({
     stateRef.current.checkpoints = ringList;
 
     // 8. Storm Rain / Snow Particles - Always construct the precipitation points so they can transition in flight
-    const pCount = 4000;
+    const isMobileDevicePrecip = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+    const pCount = isMobileDevicePrecip ? 1200 : 4000;
     const rainGeo = new THREE.BufferGeometry();
     const rainPos = new Float32Array(pCount * 3);
 
@@ -844,12 +846,13 @@ export default function FlightScene({
     scene.add(cloudsGroup);
     stateRef.current.cloudsGroup = cloudsGroup;
 
-    let cloudCount = 15;
-    if (weather.id === 'fog') cloudCount = 35;
-    else if (weather.id === 'rain') cloudCount = 28;
-    else if (weather.id === 'snow') cloudCount = 30;
-    else if (weather.id === 'afternoon') cloudCount = 20;
-    else if (weather.id === 'aurora') cloudCount = 10;
+    const isMobileDeviceClouds = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+    let cloudCount = isMobileDeviceClouds ? 8 : 15;
+    if (weather.id === 'fog') cloudCount = isMobileDeviceClouds ? 18 : 35;
+    else if (weather.id === 'rain') cloudCount = isMobileDeviceClouds ? 14 : 28;
+    else if (weather.id === 'snow') cloudCount = isMobileDeviceClouds ? 15 : 30;
+    else if (weather.id === 'afternoon') cloudCount = isMobileDeviceClouds ? 10 : 20;
+    else if (weather.id === 'aurora') cloudCount = isMobileDeviceClouds ? 5 : 10;
 
     let cloudColorHex = 0xffffff;
     if (weather.id === 'sunset') cloudColorHex = 0xfecdd3; // Rosy sunset clouds

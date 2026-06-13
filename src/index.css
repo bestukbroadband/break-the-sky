@@ -325,8 +325,43 @@ button, select, a {
 }
 
 /* Enable smooth momentum/inertia scrolling on iOS screens */
-#home-screen {
+#home-screen, #aircraft-select-screen, #weather-select-screen, .homeScreen, .menuScreen {
   -webkit-overflow-scrolling: touch;
+}
+
+/* Global layout pattern requested for iPhone first scroll support */
+html,
+body,
+#root {
+  min-height: 100%;
+  height: auto;
+  overflow-x: hidden;
+}
+
+body {
+  margin: 0;
+  -webkit-overflow-scrolling: touch;
+}
+
+body.menu-mode {
+  overflow-y: auto;
+}
+
+body.flight-mode {
+  overflow: hidden;
+}
+
+/* Ensure background decorative elements do not capture touch/pointer events and impede scrolling and dragging */
+.homeSky,
+.backgroundOverlay,
+.aircraftSilhouette,
+.horizonGlow,
+.runwayLights,
+.stars,
+.cloudLayer,
+.weatherOverlay,
+.visualOverlay {
+  pointer-events: none !important;
 }
 
 

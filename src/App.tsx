@@ -108,6 +108,22 @@ export default function App() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isIntroActive]);
 
+  // Handle dynamic iOS/mobile page scroll locking only during active flight
+  React.useEffect(() => {
+    if (screen === 'game') {
+      document.body.classList.add('flight-mode');
+      document.body.classList.remove('menu-mode');
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.classList.add('menu-mode');
+      document.body.classList.remove('flight-mode');
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [screen]);
+
   // Trigger loading transition simulator
   const startLoadingTransition = (weatherOpt: WeatherOption) => {
     setSelectedWeather(weatherOpt);
@@ -140,23 +156,32 @@ export default function App() {
   };
 
   return (
-    <div id="app-root-container" className="w-full min-h-screen bg-slate-950 text-slate-100 overflow-hidden select-none">
+    <div id="app-root-container" className="w-full min-h-screen bg-slate-950 text-slate-100 select-none overflow-x-hidden relative">
       
       {/* Dynamic Mobile Orientation Guard (iPhone Portrait Guidance) */}
-      <div className="fixed inset-0 z-[999] flex flex-col items-center justify-center bg-slate-950/98 backdrop-blur-lg text-center p-6 sm:hidden pointer-events-auto transition-opacity duration-300 select-none orientation-portrait-only">
-        <div className="w-20 h-20 rounded-full bg-sky-500/10 border border-sky-400/20 flex items-center justify-center mb-6 text-sky-400 animate-pulse">
-          <svg className="w-10 h-10 transform -rotate-90 animate-[spin_4s_linear_infinite]" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-            <rect x="5" y="2" width="14" height="20" rx="2" ry="2" />
-            <line x1="12" y1="18" x2="12.01" y2="18" strokeWidth="3" strokeLinecap="round" />
-          </svg>
+      {screen === 'game' ? (
+        /* Full Screen Orientation Indicator ONLY inside Active Flight to prevent viewport/touch issues */
+        <div className="fixed inset-0 z-[999] flex flex-col items-center justify-center bg-slate-950/98 backdrop-blur-lg text-center p-6 sm:hidden pointer-events-auto transition-opacity duration-300 select-none orientation-portrait-only">
+          <div className="w-20 h-20 rounded-full bg-sky-500/10 border border-sky-400/20 flex items-center justify-center mb-6 text-sky-450 animate-pulse">
+            <svg className="w-10 h-10 transform -rotate-90 animate-[spin_4s_linear_infinite]" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+              <rect x="5" y="2" width="14" height="20" rx="2" ry="2" />
+              <line x1="12" y1="18" x2="12.01" y2="18" strokeWidth="3" strokeLinecap="round" />
+            </svg>
+          </div>
+          <h3 className="text-lg font-black tracking-widest text-slate-100 uppercase font-sans mb-2">
+            ORIENTATION DETECTED
+          </h3>
+          <p className="text-slate-400 text-xs leading-relaxed max-w-xs font-mono">
+            Rotate your iPhone sideways for the best flying experience.
+          </p>
         </div>
-        <h3 className="text-lg font-black tracking-widest text-slate-100 uppercase font-sans mb-2">
-          ORIENTATION DETECTED
-        </h3>
-        <p className="text-slate-400 text-xs leading-relaxed max-w-xs font-mono">
-          Rotate your iPhone sideways for the best flying experience.
-        </p>
-      </div>
+      ) : (
+        /* Sticky elegant warning banner for Menu screens (Doesn't block scrolling or capture interaction) */
+        <div className="sticky top-0 left-0 right-0 z-[999] bg-sky-950/80 backdrop-blur-md border-b border-sky-500/20 px-4 py-2 sm:hidden flex items-center justify-center gap-2 text-center text-sky-400 text-[11px] font-bold font-mono tracking-wider select-none pointer-events-none orientation-portrait-only">
+          <Plane className="w-3.5 h-3.5 animate-pulse rotate-90" />
+          <span>Rotate your iPhone sideways for the best flying experience.</span>
+        </div>
+      )}
 
       {/* 1. HOME SCREEN VIEW */}
       {screen === 'home' && (
