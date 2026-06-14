@@ -38,6 +38,7 @@ export default function HUD({
   const relativePower = telemetry.throttle;
   const [showDrillPanel, setShowDrillPanel] = React.useState(false);
   const [showWeatherDropdown, setShowWeatherDropdown] = React.useState(false);
+  const [showDebugPanel, setShowDebugPanel] = React.useState(true);
 
   // Heading text conversion (e.g., 0/360 -> N, 90 -> E, 180 -> S, 270 -> W)
   const getHeadingDirection = (hd: number) => {
@@ -203,6 +204,24 @@ export default function HUD({
               <Map className="w-3.5 h-3.5" />
               <span className="hidden sm:inline">RADAR MAP [M]</span>
               <span className={`w-2 h-2 rounded-full ${showMap ? 'cabin-led-green' : 'bg-slate-705 border border-black/50'}`} />
+            </button>
+          </div>
+
+          {/* Debug panel well */}
+          <div className="cabin-well !p-0.5 !rounded-lg w-auto">
+            <button
+              id="debug-toggle-hud"
+              onClick={() => setShowDebugPanel(!showDebugPanel)}
+              className={`cabin-btn-base px-3 py-2 text-[10px] flex items-center justify-center gap-1.5 cursor-pointer ${
+                showDebugPanel 
+                  ? 'cabin-btn-cyan' 
+                  : 'cabin-btn-metallic'
+              }`}
+              title="Toggle systems debug monitors panel"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${showDebugPanel ? 'animate-spin-slow' : ''}`} />
+              <span className="hidden sm:inline">MONITORS</span>
+              <span className={`w-2 h-2 rounded-full ${showDebugPanel ? 'cabin-led-green' : 'bg-slate-705 border border-black/50'}`} />
             </button>
           </div>
 
@@ -636,6 +655,33 @@ export default function HUD({
                 </button>
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* 🛠️ DEBUG READOUT ACCORDING TO SYSTEM INSTRUCTIONS */}
+      {showDebugPanel && (
+        <div id="flight-debug-readout" className="absolute bottom-24 left-6 pointer-events-auto bg-slate-950/95 border border-slate-800/80 p-4 rounded-xl shadow-[0_10px_30px_rgba(0,0,0,0.85)] w-72 text-white z-40 font-mono text-[9px] space-y-1 backdrop-blur-md">
+          <div className="flex justify-between border-b border-slate-800 pb-1 mb-1.5 font-bold text-sky-400">
+            <span>🛠️ SYSTEMS MONITORS</span>
+            <button 
+              className="text-slate-500 hover:text-slate-300 pointer-events-auto cursor-pointer"
+              onClick={() => setShowDebugPanel(false)}
+            >
+              [X]
+            </button>
+          </div>
+          <div>GAME STATE: <span className="text-emerald-400">FLIGHT</span></div>
+          <div>PAUSED: <span className={gamePaused ? "text-amber-400 animate-pulse" : "text-slate-400"}>{gamePaused.toString().toUpperCase()}</span></div>
+          <div>SPECTATING (INTRO): <span className="text-slate-400">{(telemetry.speed === 0 && telemetry.verticalSpeed === 0 && telemetry.lastMessage.includes("SPECTATING")) ? "TRUE" : "FALSE"}</span></div>
+          <div>THROTTLE: <span className="text-amber-500">{telemetry.throttle}%</span></div>
+          <div>AIRSPEED: <span className="text-sky-450 font-extrabold">{telemetry.speed} KTS</span></div>
+          <div>BRAKE: <span className={telemetry.brakes ? "text-red-400 font-bold" : "text-slate-500"}>{telemetry.brakes ? "ACTIVE" : "OFF"}</span></div>
+          <div>ENGINE POWER: <span className="text-slate-300">{aircraft.hasEngine ? `${telemetry.throttle}% thrust` : 'N/A (GLIDER)'}</span></div>
+          <div>VELOCITY_Y: <span className="text-slate-300">{telemetry.verticalSpeed} FT/M</span></div>
+          <div>AIRCRAFT: <span className="text-indigo-400 font-bold">{aircraft.name.toUpperCase()}</span></div>
+          <div className="text-[7.5px] text-slate-500 pt-1 border-t border-slate-900 mt-1 leading-tight">
+            * Direct live sensor updates • Click [X] or MONITORS to toggle.
           </div>
         </div>
       )}

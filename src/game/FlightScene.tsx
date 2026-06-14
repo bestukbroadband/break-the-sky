@@ -125,6 +125,7 @@ export default function FlightScene({
     prevRKey: false,
     prevPKey: false,
     prevVKey: false,
+    isIntroActive: isIntroActive,
     checkpoints: [] as { mesh: THREE.Mesh; pos: THREE.Vector3; passed: boolean }[],
     currentCheckpointIndex: 0,
     rainParticles: null as THREE.Points | null,
@@ -173,6 +174,7 @@ export default function FlightScene({
 
   // Sync React state into loop handles
   useEffect(() => {
+    stateRef.current.isIntroActive = !!isIntroActive;
     if (isIntroActive) {
       stateRef.current.introTimer = 0;
     }
@@ -1034,7 +1036,7 @@ export default function FlightScene({
       let dt = Math.min(0.03, clock.getDelta());
 
       // Cinematic Pre-flight Intro Sweep Bypass
-      if (isIntroActive) {
+      if (stateRef.current.isIntroActive) {
         stateRef.current.introTimer += dt;
         const totalIntroDuration = 6.0; // 6 seconds of cinematic flyover
         const t = Math.min(1, stateRef.current.introTimer / totalIntroDuration);

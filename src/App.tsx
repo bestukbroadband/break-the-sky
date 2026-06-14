@@ -128,7 +128,7 @@ export default function App() {
   const startLoadingTransition = (weatherOpt: WeatherOption) => {
     setSelectedWeather(weatherOpt);
     setScreen('game');
-    setIsIntroActive(true);
+    setIsIntroActive(false);
     setGamePaused(false);
     setGameEnded(false);
     setIsCrash(false);

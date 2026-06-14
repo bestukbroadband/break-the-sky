@@ -50,27 +50,9 @@ export class FlightPhysics {
       this.speedKnot = 0;
     }
 
-    // Schedule a potential emergency failure mid-flight
-    // 35% probability of scheduling per scenario
+    // Schedule potential emergency failure mid-flight ONLY when requested. Default to false on normal start.
     this.hasScheduledFailure = false;
-    if (Math.random() < 0.35) {
-      const failures: ('bird_strike' | 'engine_flameout' | 'gear_jam')[] = [];
-      if (this.aircraft.hasEngine) {
-        failures.push('bird_strike', 'engine_flameout');
-      } else {
-        failures.push('bird_strike');
-      }
-      if (this.aircraft.hasLandingGear) {
-        failures.push('gear_jam');
-      }
-      
-      if (failures.length > 0) {
-        this.hasScheduledFailure = true;
-        this.scheduledFailureType = failures[Math.floor(Math.random() * failures.length)];
-        this.failureScheduledTime = 12 + Math.random() * 15; // Trigger after 12-27 seconds of airborne flight
-        this.activeFailure = null;
-      }
-    }
+    this.activeFailure = null;
   }
 
   public triggerEmergency(type: 'bird_strike' | 'engine_flameout' | 'gear_jam') {
