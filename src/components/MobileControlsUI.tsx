@@ -1,10 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Camera, Pause, Volume2, VolumeX, RotateCcw } from 'lucide-react';
 import { Aircraft } from '../types';
+import { InputState, InputStateRef, resetInputState } from './MobileControls';
+
+export { InputState, InputStateRef, resetInputState };
 
 interface MobileControlsProps {
   aircraft: Aircraft;
-  keysRef: React.MutableRefObject<{
+  keysRef?: React.MutableRefObject<{
     pitchUp: boolean;
     pitchDown: boolean;
     rollLeft: boolean;
@@ -30,7 +33,7 @@ interface MobileControlsProps {
 
 export default function MobileControls({
   aircraft,
-  keysRef,
+  keysRef: propKeysRef,
   currentThrottle,
   onCameraToggle,
   onPauseToggle,
@@ -38,6 +41,9 @@ export default function MobileControls({
   isMuted,
   onMuteToggle,
 }: MobileControlsProps) {
+  // Use the standard unified 'InputState' ref as the absolute single source of truth
+  const keysRef = propKeysRef || InputState;
+
   // Joystick Coordinates Tracker
   const [joystickPos, setJoystickPos] = useState({ x: 0, y: 0 });
   const [isDraggingJoystick, setIsDraggingJoystick] = useState(false);

@@ -4,7 +4,7 @@ import { Play, Pause, RotateCcw, SkipBack, SkipForward, Camera, X } from 'lucide
 import { Aircraft, FlightTelemetry, GameMode, WeatherOption } from '../types';
 import { FlightPhysics } from './FlightPhysics';
 import { audioEngine } from '../utils/audioEngine';
-import MobileControls from '../components/MobileControls';
+import MobileControls, { InputState, resetInputState } from '../components/MobileControls';
 import { WEATHER_OPTIONS } from '../data/weatherData';
 import { WeatherTransitioner } from './DynamicWeather';
 
@@ -67,6 +67,7 @@ export default function FlightScene({
   };
 
   const handleResetFlight = () => {
+    resetInputState();
     if (!physicsRef.current) return;
     
     let startPos = new THREE.Vector3(0, 400, 2000);
@@ -99,23 +100,8 @@ export default function FlightScene({
     setGamePaused(false);
   };
 
-  // Setup refs for live loop parameters
-  const keysRef = useRef({
-    pitchUp: false,
-    pitchDown: false,
-    rollLeft: false,
-    rollRight: false,
-    yawLeft: false,
-    yawRight: false,
-    throttleUp: false,
-    throttleDown: false,
-    brakes: false,
-    landingGear: true,
-    pitch: 0,
-    roll: 0,
-    yaw: 0,
-    throttleOverride: undefined as number | undefined
-  });
+  // Setup refs for live loop parameters - linked to standard unified 'InputState' ref
+  const keysRef = useRef(InputState.current);
 
   const stateRef = useRef({
     cameraMode: 'chase',

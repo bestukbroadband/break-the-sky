@@ -205,11 +205,15 @@ try {
   // ----------------------------------------------------
   console.log('\n\x1b[1m\x1b[34m--- 4. MOBILE/TOUCH SYSTEMS COMPLIANCE CHECK ---\x1b[0m');
   
-  const mobileControlsFilePath = path.join(process.cwd(), 'src', 'components', 'MobileControls.tsx');
+  let mobileControlsFilePath = path.join(process.cwd(), 'src', 'components', 'MobileControlsUI.tsx');
   if (!fs.existsSync(mobileControlsFilePath)) {
-    fail('MobileControls.tsx component is missing!');
+    mobileControlsFilePath = path.join(process.cwd(), 'src', 'components', 'MobileControls.tsx');
+  }
+
+  if (!fs.existsSync(mobileControlsFilePath)) {
+    fail('MobileControlsUI.tsx or MobileControls.tsx component is missing!');
   } else {
-    pass('MobileControls.tsx found.');
+    pass(`Mobile touch controller specification file found at ${path.basename(mobileControlsFilePath)}.`);
     const mbContent = fs.readFileSync(mobileControlsFilePath, 'utf8');
     
     // Check key inputs sync inside mobile controls code
