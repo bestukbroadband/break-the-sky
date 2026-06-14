@@ -9,7 +9,8 @@
     "preview": "vite preview",
     "clean": "rm -rf dist server.js",
     "deploy": "npm run build",
-    "lint": "tsc --noEmit"
+    "lint": "tsc --noEmit",
+    "playability-check": "node scripts/playability-check.js"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",
